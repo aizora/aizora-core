@@ -1,5 +1,6 @@
 use sha2::{Digest, Sha256};
 
+#[derive(Clone, Debug)]
 pub struct BlockHeader {
     pub version: u32,
     pub prev_block_hash: [u8; 32],
@@ -28,16 +29,14 @@ impl BlockHeader {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Block {
     pub header: BlockHeader,
     pub txs: Vec<Vec<u8>>,
 }
 
-/// Простой Merkle-root из списка транзакций: хешируем каждую транзакцию,
-/// потом попарно хешируем результаты, пока не останется один хеш.
 pub fn merkle_root(txs: &[Vec<u8>]) -> [u8; 32] {
     if txs.is_empty() {
-        // Если транзакций нет — возвращаем нулевой корень (как раньше)
         return [0u8; 32];
     }
 
@@ -50,18 +49,15 @@ pub fn merkle_root(txs: &[Vec<u8>]) -> [u8; 32] {
         })
         .collect();
 
-    // Попарное хеширование до одного корня
     while leaves.len() > 1 {
         let mut next_level = Vec::with_capacity((leaves.len() + 1) / 2);
         for i in (0..leaves.len()).step_by(2) {
             if i + 1 < leaves.len() {
-                // Пары: хешируем A || B
                 let mut hasher = Sha256::new();
                 hasher.update(&leaves[i]);
                 hasher.update(&leaves[i + 1]);
                 next_level.push(hasher.finalize().into());
             } else {
-                // Непарный элемент: дублируем его, чтобы дерево было полным
                 next_level.push(leaves[i]);
             }
         }
@@ -69,4 +65,38 @@ pub fn merkle_root(txs: &[Vec<u8>]) -> [u8; 32] {
     }
 
     leaves[0]
+}
+
+pub fn verify_merkle_root(block: &Block) -> bool {
+    merkle_root(&block.txs) == block.header.merkle_root
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_merkle_root_and_verify() {
+        let txs = vec![b"Alice pays Bob 10 AZR".to_vec()];
+        let root = merkle_root(&txs);
+
+        let block = Block {
+            header: BlockHeader {
+                version: 1,
+                prev_block_hash: [0u8; 32],
+                merkle_root: root,
+                timestamp: 0,
+                bits: 0x1f00_0000,
+                nonce: 0,
+                capsule: [0u8; 32],
+            },
+            txs,
+        };
+
+        assert!(verify_merkle_root(&block));
+
+        let mut bad_block = block.clone();
+        bad_block.header.merkle_root = [0xffu8; 32];
+        assert!(!verify_merkle_root(&bad_block));
+    }
 }

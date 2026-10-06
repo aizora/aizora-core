@@ -3,7 +3,8 @@ pub mod pow;
 
 #[cfg(test)]
 mod tests {
-    use super::block::BlockHeader;
+    // Вот тут теперь импортируем и Block, и BlockHeader, и функцию проверки
+    use super::block::{Block, BlockHeader, verify_merkle_root};
     use super::pow::{compact_to_target, create_next_block, mine};
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -31,8 +32,17 @@ mod tests {
         let hash = genesis.hash();
 
         assert!(hash <= target);
-        println!("⛏ GENESIS MINED! nonce = {}, hash = {}", genesis.nonce, hex(&hash));
-        println!("Merkle root: {}", hex(&genesis.merkle_root));
+
+        // Создаём полноценный блок для проверки
+        let genesis_block = Block {
+            header: genesis,
+            txs,
+        };
+        // ГЛАВНОЕ: проверяем целостность
+        assert!(verify_merkle_root(&genesis_block), "Merkle-корень генезиса не совпадает!");
+
+        println!("⛏ GENESIS MINED! nonce = {}, hash = {}", genesis_block.header.nonce, hex(&hash));
+        println!("Merkle root: {}", hex(&genesis_block.header.merkle_root));
     }
 
     #[test]
@@ -71,6 +81,9 @@ mod tests {
 
         let second_target = compact_to_target(second_block.header.bits);
         assert!(second_block.header.hash() <= second_target);
+
+        // ГЛАВНОЕ: проверка целостности второго блока
+        assert!(verify_merkle_root(&second_block), "Merkle-корень второго блока не совпадает!");
 
         println!("⛓️ Second block mined!");
         println!("Capsule message: \"{}\"", String::from_utf8_lossy(&capsule));
