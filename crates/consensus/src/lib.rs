@@ -18,7 +18,7 @@ mod tests {
             prev_block_hash: [0u8; 32],
             merkle_root: [0u8; 32],
             timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
-            bits: 0x01ff_ffff,
+            bits: 0xff00_0000,
             nonce: 0,
         };
 

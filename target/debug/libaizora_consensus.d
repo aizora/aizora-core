@@ -1,0 +1,1 @@
+/mnt/c/Users/КОЛЮНЯ/Documents/GitHub/aizora-core/target/debug/libaizora_consensus.rlib: /mnt/c/Users/КОЛЮНЯ/Documents/GitHub/aizora-core/crates/consensus/src/block.rs /mnt/c/Users/КОЛЮНЯ/Documents/GitHub/aizora-core/crates/consensus/src/lib.rs /mnt/c/Users/КОЛЮНЯ/Documents/GitHub/aizora-core/crates/consensus/src/pow.rs
