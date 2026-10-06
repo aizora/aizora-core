@@ -13,14 +13,17 @@ mod tests {
 
     #[test]
     fn mine_genesis_block() {
+        let txs = vec![b"Alice pays Bob 10 AZR".to_vec()];
+        let root = super::block::merkle_root(&txs);
+
         let mut genesis = BlockHeader {
             version: 1,
             prev_block_hash: [0u8; 32],
-            merkle_root: [0u8; 32],
+            merkle_root: root,
             timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
             bits: 0x1f00_0000,
             nonce: 0,
-            capsule: [0u8; 32], // обязательно добавляем капсулу
+            capsule: [0u8; 32],
         };
 
         let target = compact_to_target(genesis.bits);
@@ -29,15 +32,18 @@ mod tests {
 
         assert!(hash <= target);
         println!("⛏ GENESIS MINED! nonce = {}, hash = {}", genesis.nonce, hex(&hash));
+        println!("Merkle root: {}", hex(&genesis.merkle_root));
     }
 
     #[test]
     fn mine_second_block() {
-        // Создаём генезис (для этого теста)
+        let genesis_txs = vec![b"Alice pays Bob 10 AZR".to_vec()];
+        let genesis_root = super::block::merkle_root(&genesis_txs);
+
         let mut genesis = BlockHeader {
             version: 1,
             prev_block_hash: [0u8; 32],
-            merkle_root: [0u8; 32],
+            merkle_root: genesis_root,
             timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
             bits: 0x1f00_0000,
             nonce: 0,
@@ -50,12 +56,16 @@ mod tests {
 
         println!("🪨 Genesis block mined. Hash: {}", hex(&genesis_hash));
 
-        // Готовим капсулу: сообщение в блокчейне
+        let second_txs = vec![
+            b"Bob pays Carol 5 AZR".to_vec(),
+            b"Carol pays Dave 2 AZR".to_vec(),
+        ];
+
         let message = b"Aizora forever!";
         let mut capsule = [0u8; 32];
         capsule[..message.len()].copy_from_slice(message);
 
-        let second_block = create_next_block(genesis_hash, genesis.timestamp + 10, capsule);
+        let second_block = create_next_block(genesis_hash, genesis.timestamp + 10, capsule, second_txs);
 
         assert_eq!(second_block.header.prev_block_hash, genesis_hash);
 
@@ -65,5 +75,6 @@ mod tests {
         println!("⛓️ Second block mined!");
         println!("Capsule message: \"{}\"", String::from_utf8_lossy(&capsule));
         println!("Block hash: {}", hex(&second_block.header.hash()));
+        println!("Merkle root (2 txs): {}", hex(&second_block.header.merkle_root));
     }
 }

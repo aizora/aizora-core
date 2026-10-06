@@ -32,3 +32,41 @@ pub struct Block {
     pub header: BlockHeader,
     pub txs: Vec<Vec<u8>>,
 }
+
+/// Простой Merkle-root из списка транзакций: хешируем каждую транзакцию,
+/// потом попарно хешируем результаты, пока не останется один хеш.
+pub fn merkle_root(txs: &[Vec<u8>]) -> [u8; 32] {
+    if txs.is_empty() {
+        // Если транзакций нет — возвращаем нулевой корень (как раньше)
+        return [0u8; 32];
+    }
+
+    let mut leaves: Vec<[u8; 32]> = txs
+        .iter()
+        .map(|tx| {
+            let mut hasher = Sha256::new();
+            hasher.update(tx);
+            hasher.finalize().into()
+        })
+        .collect();
+
+    // Попарное хеширование до одного корня
+    while leaves.len() > 1 {
+        let mut next_level = Vec::with_capacity((leaves.len() + 1) / 2);
+        for i in (0..leaves.len()).step_by(2) {
+            if i + 1 < leaves.len() {
+                // Пары: хешируем A || B
+                let mut hasher = Sha256::new();
+                hasher.update(&leaves[i]);
+                hasher.update(&leaves[i + 1]);
+                next_level.push(hasher.finalize().into());
+            } else {
+                // Непарный элемент: дублируем его, чтобы дерево было полным
+                next_level.push(leaves[i]);
+            }
+        }
+        leaves = next_level;
+    }
+
+    leaves[0]
+}
